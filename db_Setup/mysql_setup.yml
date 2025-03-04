@@ -1,12 +1,77 @@
-- name: Install and Configure Mysql Database
+- name: Install and Configure MySQL Database
   hosts: db_servers
   gather_facts: true
   become: true
+
   vars:
-    root_password: sekhar
+    root_password: "sekhar"
     db_name: "sekhar"
     db_user: "sekhar"
     db_user_password: "db_password"
+
   tasks:
-   - name: install the db_servers
+    - name: Install MySQL Server (For Ubuntu/Debian)
+      apt:
+        name: mysql-server
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install MySQL Server (For RHEL/CentOS)
+      yum:
+        name: mysql-server
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Start and Enable MySQL Service
+      service:
+        name: mysql
+        state: started
+        enabled: true
+
+    - name: Secure MySQL Installation - Set Root Password
+      mysql_user:
+        name: root
+        host: localhost
+        password: "{{ root_password }}"
+        login_user: root
+        login_password: "{{ root_password }}"
+        state: present
+
+    - name: Remove Anonymous Users
+      mysql_user:
+        name: ""
+        host_all: yes
+        state: absent
+        login_user: root
+        login_password: "{{ root_password }}"
+
+    - name: Remove Test Database
+      mysql_db:
+        name: test
+        state: absent
+        login_user: root
+        login_password: "{{ root_password }}"
+
+    - name: Create Database "{{ db_name }}"
+      mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        login_user: root
+        login_password: "{{ root_password }}"
+
+    - name: Create MySQL User "{{ db_user }}"
+      mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_user_password }}"
+        priv: "{{ db_name }}.*:ALL"
+        host: "%"
+        state: present
+        login_user: root
+        login_password: "{{ root_password }}"
+
+    - name: Restart MySQL Service
+      service:
+        name: mysql
+        state: restarted
+
      
